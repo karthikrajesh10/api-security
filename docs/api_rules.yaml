@@ -1,0 +1,108 @@
+# ─────────────────────────────────────────────────────────
+# API Security Rules Document
+# ─────────────────────────────────────────────────────────
+# This file teaches the ML model what "normal" looks like
+# BEFORE any real traffic arrives.
+#
+# How to add a new endpoint:
+#   1. Add it under `endpoints:`
+#   2. Fill in expected fields, auth, latency
+#   3. Restart the server OR call POST /api/rules/reload
+#   4. Model auto-retrains with synthetic baseline data
+# ─────────────────────────────────────────────────────────
+
+version: "1.0"
+
+global_rules:
+  require_auth_by_default: true
+  max_latency_ms: 2000
+  flag_admin_without_auth: true
+  flag_delete_without_auth: true
+
+endpoints:
+  - path: /api/users/login
+    method: POST
+    auth_required: false        # login endpoint — no token yet
+    expected_status: [200, 401, 429]
+    normal_latency_ms: 300
+    request_fields:
+      - name: email
+        type: string
+        required: true
+      - name: password
+        type: string
+        required: true
+    risk_notes: "High value target — monitor for credential stuffing"
+
+  - path: /api/users/profile
+    method: GET
+    auth_required: true
+    expected_status: [200, 401, 403, 404]
+    normal_latency_ms: 150
+    request_fields: []
+    risk_notes: "PII endpoint — flag excessive access from single IP"
+
+  - path: /api/users/profile
+    method: PUT
+    auth_required: true
+    expected_status: [200, 400, 401, 403]
+    normal_latency_ms: 200
+    request_fields:
+      - name: name
+        type: string
+        required: false
+      - name: email
+        type: string
+        required: false
+    risk_notes: "Mass assignment risk — validate no extra fields"
+
+  - path: /api/products
+    method: GET
+    auth_required: false
+    expected_status: [200, 404]
+    normal_latency_ms: 100
+    request_fields: []
+    risk_notes: ""
+
+  - path: /api/orders
+    method: GET
+    auth_required: true
+    expected_status: [200, 401, 403]
+    normal_latency_ms: 200
+    request_fields: []
+    risk_notes: "Check for IDOR — users should only see own orders"
+
+  - path: /api/orders
+    method: POST
+    auth_required: true
+    expected_status: [201, 400, 401, 403]
+    normal_latency_ms: 300
+    request_fields:
+      - name: product_id
+        type: integer
+        required: true
+      - name: quantity
+        type: integer
+        required: true
+      - name: address
+        type: string
+        required: true
+    risk_notes: "Validate quantity bounds — prevent negative quantity abuse"
+
+  - path: /api/admin/users
+    method: GET
+    auth_required: true
+    admin_only: true
+    expected_status: [200, 401, 403]
+    normal_latency_ms: 300
+    request_fields: []
+    risk_notes: "Admin endpoint — any access without valid admin token is HIGH risk"
+
+  - path: /api/admin/users/5
+    method: DELETE
+    auth_required: true
+    admin_only: true
+    expected_status: [200, 401, 403, 404]
+    normal_latency_ms: 200
+    request_fields: []
+    risk_notes: "Destructive admin action — require confirmation token"

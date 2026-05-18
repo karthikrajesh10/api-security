@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+asyncpg
+alembic
+pydantic-settings
+python-dotenv
+httpx
+celery
+redis
+elasticsearch
+ollama
+scikit-learn
+numpy
+pandas
+psycopg2-binary
+pyyaml
