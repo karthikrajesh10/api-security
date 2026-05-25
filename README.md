@@ -1,6 +1,6 @@
 # 🔐 Intelligent API Security Platform
 
-> A unified API security platform combining **ML-based passive monitoring** (Phase 1) and **active vulnerability testing** (Phase 2). Built with FastAPI, Isolation Forest, Ollama local LLMs, and PostgreSQL.
+> A unified API security platform combining **ML-based passive monitoring** (Phase 1) and **active vulnerability testing** (Phase 2). Built with FastAPI, Isolation Forest, Ollama local LLMs, PostgreSQL, and a React dashboard.
 
 ---
 
@@ -16,13 +16,15 @@
 8. [Ollama Local Models Setup](#8-ollama-local-models-setup)
 9. [Configuration (.env)](#9-configuration-env)
 10. [Running the Application](#10-running-the-application)
-11. [Training the ML Model](#11-training-the-ml-model)
-12. [API Rules System (api_rules.yaml)](#12-api-rules-system-api_rulesyaml)
-13. [Testing API Endpoints in Postman](#13-testing-api-endpoints-in-postman)
-14. [Explanation Engine](#14-explanation-engine)
-15. [Alerting System](#15-alerting-system)
-16. [Current Status & Roadmap](#16-current-status--roadmap)
-17. [Troubleshooting](#17-troubleshooting)
+11. [React Dashboard](#11-react-dashboard)
+12. [Training the ML Model](#12-training-the-ml-model)
+13. [API Rules System (api_rules.yaml)](#13-api-rules-system-api_rulesyaml)
+14. [Testing API Endpoints in Postman](#14-testing-api-endpoints-in-postman)
+15. [Testing a Real API](#15-testing-a-real-api)
+16. [Explanation Engine](#16-explanation-engine)
+17. [Alerting System](#17-alerting-system)
+18. [Current Status & Roadmap](#18-current-status--roadmap)
+19. [Troubleshooting](#19-troubleshooting)
 
 ---
 
@@ -30,12 +32,13 @@
 
 This platform solves a critical gap in API security tooling — most organizations use **separate, disconnected tools** for monitoring and testing with no feedback loop between them.
 
-### Phase 1 — ML Monitoring (Built)
+### Phase 1 — ML Monitoring (Built ✅)
 - Captures all API traffic via an ingestion endpoint
 - Learns normal behavior automatically per endpoint (schema learning)
 - Detects anomalies using **Isolation Forest** ML model
 - Explains suspicious requests via **local LLM** (Ollama) or **rules engine** fallback
 - Fires real-time alerts to console and Slack
+- **React dashboard** with live traffic feed, risk heatmap, flagged request viewer, schema browser
 
 ### Phase 2 — Active Testing (Planned)
 - Replays captured requests with modifications
@@ -85,6 +88,11 @@ POST /api/traffic/ingest
     ┌───────────────────┐
     │  Alert Service    │
     │  Console + Slack  │
+    └────────┬──────────┘
+             ↓
+    ┌───────────────────┐
+    │  React Dashboard  │
+    │  localhost:5173   │
     └───────────────────┘
 ```
 
@@ -96,7 +104,6 @@ POST /api/traffic/ingest
 |---|---|---|
 | Backend API | FastAPI (Python 3.11+) | Async REST API |
 | Database | PostgreSQL 16 | Structured storage |
-| Time-series | TimescaleDB (planned) | High-volume logs |
 | Search | Elasticsearch 8.x | Log search |
 | Cache / Queue | Redis 7 | Task queue |
 | ML — Anomaly | scikit-learn (Isolation Forest) | Anomaly scoring |
@@ -105,7 +112,9 @@ POST /api/traffic/ingest
 | Migrations | Alembic | Database schema versioning |
 | ORM | SQLAlchemy (async) | Database access |
 | Container | Docker + Docker Compose | Infrastructure |
-| Frontend | React + TypeScript (planned) | Dashboard |
+| Frontend | React + TypeScript + Vite | Dashboard |
+| Charts | Recharts | Data visualization |
+| Icons | Lucide React | UI icons |
 
 ---
 
@@ -167,10 +176,21 @@ api-security/
 │   └── alembic.ini
 ├── docs/
 │   └── api_rules.yaml            ← Security rules definition
-├── frontend/                     ← React dashboard (coming soon)
-├── proxy/                        ← mitmproxy scripts (coming soon)
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── client.ts         ← Axios base client
+│   │   │   └── endpoints.ts      ← All API calls
+│   │   ├── App.tsx               ← Main dashboard component
+│   │   ├── App.css               ← Dashboard styles
+│   │   ├── index.css             ← Global styles & CSS variables
+│   │   └── main.tsx              ← React entry point
+│   ├── package.json
+│   └── vite.config.ts
+├── proxy/                        ← mitmproxy scripts (Phase 2)
 ├── docker-compose.yml            ← Infrastructure services
 ├── .env                          ← Environment config (never commit)
+├── .env.example                  ← Safe template to share
 ├── .gitignore
 └── README.md
 ```
@@ -186,7 +206,15 @@ git clone <your-repo-url>
 cd api-security
 ```
 
-### Step 2 — Start infrastructure services
+### Step 2 — Copy environment config
+
+```bash
+copy .env.example .env
+```
+
+Edit `.env` with your values (see [Section 9](#9-configuration-env)).
+
+### Step 3 — Start infrastructure services
 
 ```bash
 docker compose up -d
@@ -202,7 +230,7 @@ docker ps
 
 You should see `apisec_postgres`, `apisec_redis`, and `apisec_elastic` with status `Up`.
 
-### Step 3 — Create Python virtual environment
+### Step 4 — Create Python virtual environment
 
 ```bash
 cd backend
@@ -217,16 +245,19 @@ python -m venv .venv
 
 Your terminal prompt should now show `(.venv)`.
 
-### Step 4 — Install Python dependencies
+### Step 5 — Install Python dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-If `requirements.txt` is missing, install manually:
+### Step 6 — Install frontend dependencies
+
+Open a second terminal:
 
 ```bash
-pip install fastapi uvicorn sqlalchemy asyncpg alembic pydantic-settings python-dotenv httpx celery redis elasticsearch ollama scikit-learn numpy pandas pyyaml
+cd frontend
+npm install
 ```
 
 ---
@@ -258,7 +289,7 @@ Open `.env` and confirm:
 DATABASE_URL=postgresql://apisec:apisec123@127.0.0.1:5433/apisecdb
 ```
 
-> **Note:** Use `127.0.0.1` not `localhost`. On Windows, `localhost` sometimes resolves to IPv6 (`::1`) which can cause authentication failures.
+> **Note:** Use `127.0.0.1` not `localhost`. On Windows, `localhost` sometimes resolves to IPv6 (`::1`) which causes authentication failures.
 
 ### Step 3 — Run database migrations
 
@@ -321,8 +352,6 @@ Download from **https://ollama.com/download** and run the installer.
 
 ### Step 2 — Pull the required models
 
-Open a terminal and run:
-
 ```bash
 ollama pull nomic-embed-text
 ollama pull llama3.2:1b
@@ -350,11 +379,9 @@ nomic-embed-text:latest    274 MB
 ollama run llama3.2:1b "Say hello in one sentence"
 ```
 
-If you see a response, the LLM is working.
-
 ### GPU Memory Issues
 
-If Ollama fails with `out of memory`, your GPU doesn't have enough free VRAM. Fix:
+If Ollama fails with `out of memory`, your GPU doesn't have enough free VRAM.
 
 **Option A — Force CPU mode (Windows):**
 ```bash
@@ -364,7 +391,7 @@ ollama serve
 
 **Option B — Use rules engine fallback:**
 
-The platform automatically falls back to the rules engine if the LLM is unavailable. No action needed — it just works.
+The platform automatically falls back to the rules engine if the LLM is unavailable. No action needed — it just works. Every response will show `"explanation_source": "rules_engine"` instead of `"llm"`.
 
 **Option C — Switch to cloud LLM:**
 
@@ -374,7 +401,7 @@ Change `MODEL_PROVIDER=openai` in `.env` and add `OPENAI_API_KEY`. No code chang
 
 ## 9. Configuration (.env)
 
-The `.env` file lives at `D:\api-security\.env`. It controls all platform settings.
+The `.env` file lives at the project root `api-security/.env`. It controls all platform settings. Never commit this file — use `.env.example` as the shareable template.
 
 ```env
 # ── Database ──────────────────────────────────────────────
@@ -389,7 +416,7 @@ ELASTIC_URL=http://localhost:9200
 # ── Ollama Local Models ───────────────────────────────────
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_EMBED_MODEL=nomic-embed-text
-OLLAMA_LLM_MODEL=llama3.2:1b     # Change to llama3.2 for larger model
+OLLAMA_LLM_MODEL=llama3.2:1b
 
 # ── Model Provider ────────────────────────────────────────
 # Options: ollama | openai
@@ -409,9 +436,7 @@ SECRET_KEY=changethislater_use_openssl_rand
 
 1. Change `MODEL_PROVIDER=openai`
 2. Add `OPENAI_API_KEY=sk-...`
-3. Restart the server
-
-No code changes needed anywhere.
+3. Restart the server — no code changes needed
 
 ### Enabling Slack Alerts
 
@@ -424,14 +449,9 @@ No code changes needed anywhere.
 
 ## 10. Running the Application
 
-### Start infrastructure (if not already running)
+You need **two terminals** running simultaneously — one for the backend, one for the frontend.
 
-```bash
-cd api-security
-docker compose up -d
-```
-
-### Start the backend server
+### Terminal 1 — Backend
 
 ```bash
 cd api-security\backend
@@ -439,19 +459,28 @@ cd api-security\backend
 uvicorn main:app --reload --port 8000
 ```
 
+### Terminal 2 — Frontend
+
+```bash
+cd api-security\frontend
+npm run dev
+```
+
 ### Verify everything is running
 
-Open your browser:
-
-| URL | Expected |
+| URL | What you should see |
 |---|---|
 | http://localhost:8000/health | `{"status":"ok","ml_available":true}` |
-| http://localhost:8000/docs | Swagger UI with all endpoints |
+| http://localhost:8000/docs | Swagger UI with all API endpoints |
+| http://localhost:5173 | React dashboard |
 
 ### Seed test data (first time only)
 
+Open a third terminal:
+
 ```bash
-cd backend
+cd api-security\backend
+.venv\Scripts\activate
 python seed.py
 ```
 
@@ -459,7 +488,48 @@ This sends 50 realistic traffic records to populate the database and train the s
 
 ---
 
-## 11. Training the ML Model
+## 11. React Dashboard
+
+Open **http://localhost:5173** in your browser. The dashboard auto-refreshes every 15 seconds.
+
+### Overview Tab
+- **Stat cards** — Total requests, flagged count, high risk count, schemas learned
+- **Latency timeline** — Area chart of the last 40 requests
+- **Risk breakdown** — Bar chart of High / Medium / Low distribution
+- **Endpoint risk heatmap** — Top 8 endpoints ranked by flagged request ratio
+
+### Traffic Tab
+- Full scrollable table of all captured traffic
+- Color-coded method tags (GET=blue, POST=green, DELETE=red, etc.)
+- Color-coded status codes (2xx=green, 4xx=yellow, 5xx=red)
+- Risk badges and anomaly scores per request
+- Latency highlighted red when above 1000ms
+
+### Flagged Tab
+- All requests flagged as HIGH risk
+- Click any row to expand and see full analysis:
+  - Anomaly score and risk level
+  - All rule violations and deviations with severity
+  - Full explanation from rules engine or LLM
+  - Shows `explanation_source: llm` or `rules_engine`
+
+### Schemas Tab
+- Cards showing what the ML model has learned about each endpoint
+- Sample count, average latency, known status codes
+- Request field names with frequency % and required/optional status
+- Stability indicator (stable after 10+ samples)
+
+### Sidebar Actions
+| Button | What it does |
+|---|---|
+| Reload Rules | Re-reads `api_rules.yaml`, seeds schemas, retrains model |
+| Train Model | Trains Isolation Forest on all stored traffic |
+| Score All Logs | Runs anomaly scoring on all unscored logs |
+| Refresh Data | Manually triggers a data refresh |
+
+---
+
+## 12. Training the ML Model
 
 The ML model (Isolation Forest) must be trained before it can score traffic. Training uses stored traffic logs to learn what normal behavior looks like.
 
@@ -467,7 +537,7 @@ The ML model (Isolation Forest) must be trained before it can score traffic. Tra
 
 - After first setup (seed data first)
 - After loading rules from `api_rules.yaml`
-- After significant new traffic accumulates (weekly recommended)
+- After significant new traffic accumulates
 - After adding new endpoints to the rules doc
 
 ### Method 1 — Train on real traffic only
@@ -487,7 +557,7 @@ Expected response:
 
 ### Method 2 — Train using rules doc (recommended)
 
-This combines synthetic baseline data from `api_rules.yaml` with real traffic. Solves the cold-start problem — new endpoints are known before any traffic arrives.
+Combines synthetic baseline data from `api_rules.yaml` with real traffic. Solves the cold-start problem — new endpoints are known before any traffic arrives.
 
 **In Postman:** `POST http://localhost:8000/api/rules/reload`
 
@@ -502,23 +572,13 @@ Expected response:
 }
 ```
 
-> **Always use Method 2** after editing `api_rules.yaml`. It combines doc knowledge with real traffic for the best model accuracy.
+> **Always use Method 2** after editing `api_rules.yaml`.
 
 ### Score all existing unscored logs
 
-After training, run this to retroactively score logs that arrived before the model was trained:
+After training, run this to retroactively score logs:
 
 **In Postman:** `POST http://localhost:8000/api/anomaly/analyze-all`
-
-Expected response:
-```json
-{
-  "high": 8,
-  "medium": 24,
-  "low": 50,
-  "total": 82
-}
-```
 
 ### Model persistence
 
@@ -528,15 +588,15 @@ backend/app/ml/isolation_forest.pkl
 backend/app/ml/scaler.pkl
 ```
 
-The model automatically reloads on server restart — you do not need to retrain after every restart.
+The model automatically reloads on server restart — no retraining needed after every restart.
 
 ---
 
-## 12. API Rules System (api_rules.yaml)
+## 13. API Rules System (api_rules.yaml)
 
 The rules file lives at `docs/api_rules.yaml`. It serves two purposes:
 
-1. **Pre-seeds schemas** so the ML model knows about endpoints before traffic arrives (solves cold-start)
+1. **Pre-seeds schemas** so the ML model knows about endpoints before traffic arrives
 2. **Defines security rules** that run on every request regardless of ML score
 
 ### File structure
@@ -589,47 +649,40 @@ endpoints:
       - name: card_token
         type: string
         required: true
-    risk_notes: "High value endpoint — flag any access without auth or unusual amounts"
+    risk_notes: "High value endpoint — flag any access without auth"
 ```
 
 3. Save the file
-4. Call the reload endpoint:
+4. Call the reload endpoint in Postman: `POST http://localhost:8000/api/rules/reload`
 
-**In Postman:** `POST http://localhost:8000/api/rules/reload`
-
-The system will immediately:
-- Create a learned schema for `/api/payments/charge POST`
-- Generate synthetic training data for this endpoint
-- Retrain the model combining new + existing data
-
-> You do **not** need to restart the server.
+The system immediately creates a learned schema, generates synthetic training data, and retrains the model. No server restart needed.
 
 ### How rules affect scoring
 
-| Condition | Severity | Effect |
+| Condition | Severity | Effect on Risk |
 |---|---|---|
-| Admin endpoint accessed without Bearer token | High | Forces risk to HIGH regardless of ML score |
-| DELETE/PUT/PATCH without Bearer token | High | Forces risk to HIGH |
-| Status code not in `expected_status` | Medium | Boosts risk to MEDIUM if ML says LOW |
-| Request latency > `max_latency_ms` | Medium | Boosts risk to MEDIUM |
-| Unknown field in request body | Medium | Boosts risk to MEDIUM |
-| Missing required field | High | Forces risk to HIGH |
+| Admin endpoint without Bearer token | High | Forces HIGH regardless of ML score |
+| DELETE/PUT/PATCH without Bearer token | High | Forces HIGH |
+| Status code not in `expected_status` | Medium | Boosts to MEDIUM if ML says LOW |
+| Latency > `max_latency_ms` | Medium | Boosts to MEDIUM |
+| Unknown field in request body | Medium | Boosts to MEDIUM |
+| Missing required field | High | Forces HIGH |
 
 ### Viewing current rules
 
-**In Postman:** `GET http://localhost:8000/api/rules/view`
+`GET http://localhost:8000/api/rules/view`
 
 ### Checking rules for a specific endpoint
 
-**In Postman:** `GET http://localhost:8000/api/rules/check/POST/api/users/login`
+`GET http://localhost:8000/api/rules/check/POST/api/users/login`
 
 ---
 
-## 13. Testing API Endpoints in Postman
-
-Import this collection manually or set up each request as described below.
+## 14. Testing API Endpoints in Postman
 
 Set your **Base URL** as a Postman variable: `{{base_url}} = http://localhost:8000`
+
+> **Important:** When ingesting traffic, the `url` field in the body is just data describing what request was observed — you are NOT making a request to that URL. You are sending metadata to your platform's ingest endpoint.
 
 ---
 
@@ -639,7 +692,6 @@ Set your **Base URL** as a Postman variable: `{{base_url}} = http://localhost:80
 |---|---|
 | Method | GET |
 | URL | `{{base_url}}/health` |
-| Body | None |
 
 Expected response:
 ```json
@@ -660,15 +712,15 @@ Expected response:
 |---|---|
 | Method | POST |
 | URL | `{{base_url}}/api/traffic/ingest` |
-| Body type | raw → JSON |
+| Body | raw → JSON |
 
-Body:
 ```json
 {
   "method": "POST",
   "url": "http://target-api.com/api/users/login",
   "request_headers": {
     "content-type": "application/json",
+    "authorization": "Bearer valid_token_abc",
     "user-agent": "Mozilla/5.0"
   },
   "request_body": "{\"email\":\"user@example.com\",\"password\":\"secret123\"}",
@@ -692,9 +744,8 @@ Expected response:
 
 ---
 
-### 🔴 Ingest Suspicious Traffic (Admin without auth)
+### 🔴 Ingest Suspicious Traffic — Admin without auth
 
-Body:
 ```json
 {
   "method": "DELETE",
@@ -708,7 +759,7 @@ Body:
 }
 ```
 
-Expected response:
+Expected:
 ```json
 {
   "risk_level": "high",
@@ -721,9 +772,8 @@ Expected response:
 
 ---
 
-### 🔴 Ingest High Latency Attack Probe
+### 🔴 Ingest SQL Injection Attempt
 
-Body:
 ```json
 {
   "method": "POST",
@@ -742,55 +792,35 @@ Body:
 
 ### 📋 Get Recent Traffic Logs
 
-| Field | Value |
-|---|---|
 | Method | GET |
-| URL | `{{base_url}}/api/traffic/recent?limit=20` |
-| Body | None |
+|---|---|
+| URL | `{{base_url}}/api/traffic/recent?limit=50` |
 
 ---
 
 ### 📊 Get Traffic Stats
 
-| Field | Value |
-|---|---|
 | Method | GET |
+|---|---|
 | URL | `{{base_url}}/api/traffic/stats` |
-
-Expected response:
-```json
-{
-  "total_requests": 82,
-  "flagged_count": 8,
-  "by_risk_level": {
-    "low": 50,
-    "medium": 24,
-    "high": 8
-  }
-}
-```
 
 ---
 
 ### 🧠 Train the ML Model
 
-| Field | Value |
-|---|---|
 | Method | POST |
+|---|---|
 | URL | `{{base_url}}/api/anomaly/train` |
-| Body | None |
 
-> Run this after seeding data. Requires 20+ traffic logs.
+Requires 20+ traffic logs. Run seed.py first if needed.
 
 ---
 
 ### 🔍 Analyze a Specific Log
 
-| Field | Value |
-|---|---|
 | Method | POST |
+|---|---|
 | URL | `{{base_url}}/api/anomaly/analyze/{log_id}` |
-| Body | None |
 
 Replace `{log_id}` with a UUID from the recent traffic response.
 
@@ -802,10 +832,10 @@ Expected response:
   "is_flagged": true,
   "deviations": [
     {
-      "type": "missing_required_auth",
-      "detail": "DELETE /api/admin/users/99 requires authentication",
+      "type": "admin_access_without_auth",
+      "detail": "Admin endpoint accessed without valid auth token",
       "severity": "high",
-      "source": "endpoint_rule"
+      "source": "global_rule"
     }
   ],
   "explanation": "[Rules Engine] This request was flagged due to...",
@@ -818,72 +848,132 @@ Expected response:
 
 ### 🔍 Score All Unscored Logs
 
-| Field | Value |
-|---|---|
 | Method | POST |
+|---|---|
 | URL | `{{base_url}}/api/anomaly/analyze-all` |
 
 ---
 
 ### 🚨 Get All Flagged Requests
 
-| Field | Value |
-|---|---|
 | Method | GET |
+|---|---|
 | URL | `{{base_url}}/api/anomaly/flagged` |
 
 ---
 
 ### 📖 View All Learned Schemas
 
-| Field | Value |
-|---|---|
 | Method | GET |
+|---|---|
 | URL | `{{base_url}}/api/schema/all` |
-
----
-
-### 📖 View Schema for Specific Endpoint
-
-| Field | Value |
-|---|---|
-| Method | GET |
-| URL | `{{base_url}}/api/schema/POST/api/users/login` |
-
----
-
-### 📜 View Current Rules
-
-| Field | Value |
-|---|---|
-| Method | GET |
-| URL | `{{base_url}}/api/rules/view` |
 
 ---
 
 ### 🔄 Reload Rules + Retrain Model
 
-| Field | Value |
-|---|---|
 | Method | POST |
+|---|---|
 | URL | `{{base_url}}/api/rules/reload` |
 
-> Call this every time you edit `api_rules.yaml`.
+Call this every time you edit `api_rules.yaml`.
 
 ---
 
-### 🔎 Check Rules for an Endpoint
+## 15. Testing a Real API
 
-| Field | Value |
-|---|---|
-| Method | GET |
-| URL | `{{base_url}}/api/rules/check/DELETE/api/admin/users/5` |
+You can feed real API traffic into the platform for analysis. Here is an example using a live endpoint.
+
+### Step 1 — Hit the real API in Postman
+
+```
+GET https://shopqa.leykart.com/rest/V1/stores-list/top-level
+```
+
+Note the response time shown at the bottom of Postman (e.g. `380ms`).
+
+### Step 2 — Add the endpoint to api_rules.yaml
+
+```yaml
+  - path: /rest/V1/stores-list/top-level
+    method: GET
+    auth_required: false
+    admin_only: false
+    expected_status: [200]
+    normal_latency_ms: 400
+    request_fields: []
+    risk_notes: "Public endpoint — monitor for scraping"
+```
+
+Then call `POST http://localhost:8000/api/rules/reload`.
+
+### Step 3 — Ingest the real request into the platform
+
+```json
+POST http://localhost:8000/api/traffic/ingest
+
+{
+  "method": "GET",
+  "url": "https://shopqa.leykart.com/rest/V1/stores-list/top-level",
+  "request_headers": {
+    "user-agent": "PostmanRuntime/7.36",
+    "accept": "*/*"
+  },
+  "status_code": 200,
+  "latency_ms": 380.0,
+  "source_ip": "103.21.58.10"
+}
+```
+
+### Step 4 — Simulate attack scenarios
+
+**Scanner probe (sqlmap):**
+```json
+{
+  "method": "GET",
+  "url": "https://shopqa.leykart.com/rest/V1/stores-list/top-level",
+  "request_headers": { "user-agent": "sqlmap/1.7.8#stable" },
+  "status_code": 200,
+  "latency_ms": 89.0,
+  "source_ip": "185.220.101.5"
+}
+```
+
+**DoS probe (high latency + server error):**
+```json
+{
+  "method": "GET",
+  "url": "https://shopqa.leykart.com/rest/V1/stores-list/top-level",
+  "request_headers": { "user-agent": "Mozilla/5.0" },
+  "status_code": 500,
+  "latency_ms": 8500.0,
+  "source_ip": "92.118.160.11"
+}
+```
+
+**Admin endpoint enumeration:**
+```json
+{
+  "method": "GET",
+  "url": "https://shopqa.leykart.com/rest/V1/admin/users",
+  "request_headers": { "user-agent": "python-requests/2.31.0" },
+  "status_code": 403,
+  "latency_ms": 120.0,
+  "source_ip": "185.220.101.5"
+}
+```
+
+### Step 5 — Check the dashboard
+
+Go to `http://localhost:5173` → Refresh → Flagged tab. Click any flagged row to see the full analysis with rule violations and explanation.
+
+> **Note:** In production, a mitmproxy layer will capture real traffic automatically and feed it to the ingest endpoint — no manual Postman steps needed. This is planned for Phase 2.
 
 ---
 
-## 14. Explanation Engine
+## 16. Explanation Engine
 
-Every flagged request gets an explanation of why it was flagged. The platform uses two engines:
+Every medium/high risk request gets an explanation of why it was flagged. The platform has two engines and automatically falls back from LLM to rules engine if needed.
 
 ### Engine 1 — LLM (Primary)
 
@@ -904,7 +994,7 @@ vulnerabilities.
 
 ### Engine 2 — Rules Engine (Fallback)
 
-Deterministic, instant explanations based on security rules. Always available — no hardware requirements.
+Deterministic, instant explanations based on security rules. Always available — no hardware requirements. Activates automatically when LLM is unavailable.
 
 **When active:** `"explanation_source": "rules_engine"`
 
@@ -918,27 +1008,25 @@ admin access. Recommend investigating source IP 185.220.101.5.
 
 ### Switching between engines
 
-Edit `.env` — no code changes needed:
+Edit `.env` only — no code changes needed:
 
 ```env
-# Use local Ollama LLM
+# Local Ollama (default)
 MODEL_PROVIDER=ollama
 OLLAMA_LLM_MODEL=llama3.2:1b
 
-# Use OpenAI instead (future)
+# OpenAI cloud (swap in anytime)
 MODEL_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 ```
 
-The rules engine fallback is always active regardless of setting.
-
 ---
 
-## 15. Alerting System
+## 17. Alerting System
 
 ### Console Alerts (Always Active)
 
-Every HIGH risk request prints to the uvicorn terminal:
+Every HIGH risk request prints immediately to the uvicorn terminal:
 
 ```
 ============================================================
@@ -961,11 +1049,11 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 ```
 3. Restart the server
 
-Slack messages include: risk level, endpoint, IP, score, deviations, and LLM explanation.
+Slack messages include: risk level, endpoint, source IP, anomaly score, all deviations, and the full explanation text.
 
 ---
 
-## 16. Current Status & Roadmap
+## 18. Current Status & Roadmap
 
 ### ✅ Built and Working
 
@@ -976,26 +1064,30 @@ Slack messages include: risk level, endpoint, IP, score, deviations, and LLM exp
 - Doc-driven rules (`api_rules.yaml`)
 - Cold-start solution (synthetic training from docs)
 - LLM explanation with rules engine fallback
-- Console and Slack alerting
-- Abstracted ML provider (swap Ollama ↔ OpenAI via config)
+- Abstracted ML provider (swap Ollama ↔ OpenAI via `.env`)
 - Model persistence across server restarts
-
-### ⏳ In Progress
-
-- React dashboard (traffic feed, risk heatmap, anomaly timeline)
+- Console and Slack alerting
+- React dashboard with 4 tabs:
+  - Overview (stats, latency chart, risk breakdown, endpoint heatmap)
+  - Traffic (live scrollable table with risk scores)
+  - Flagged (expandable rows with full analysis + deviations + explanation)
+  - Schemas (learned endpoint behavior cards)
+- Real API testing workflow (Postman → ingest → dashboard)
 
 ### 📋 Planned — Phase 2
 
-- mitmproxy capture (intercept real traffic automatically)
-- Request replayer (Burp Repeater equivalent)
+- mitmproxy proxy layer (automatic real traffic capture)
+- Request replayer (Burp Suite Repeater equivalent)
 - Fuzzing engine (SQLi, XSS, IDOR, JWT attacks)
-- Vulnerability detection and report generation
-- PDF export of findings
+- Attack template engine (OWASP Top 10 coverage)
+- Vulnerability detection and findings database
+- PDF report generation and export
 - Adaptive feedback loop (Phase 1 anomaly → trigger Phase 2 scan)
+- RBAC and multi-tenant support
 
 ---
 
-## 17. Troubleshooting
+## 19. Troubleshooting
 
 ### `password authentication failed for user "apisec"`
 
@@ -1021,11 +1113,11 @@ ollama serve
 
 Not enough traffic data in the database.
 
-**Fix:** Run the seeder first:
+**Fix:** Run the seeder first, then reload rules:
 ```bash
 python seed.py
 ```
-Then call `POST /api/rules/reload` which combines synthetic + real data.
+Then call `POST http://localhost:8000/api/rules/reload`.
 
 ### `ModuleNotFoundError` on startup
 
@@ -1042,7 +1134,7 @@ pip install -r requirements.txt
 
 Migration history is inconsistent.
 
-**Fix (development only — deletes data):**
+**Fix (development only — deletes all data):**
 ```bash
 docker compose down -v
 docker compose up -d
@@ -1053,22 +1145,45 @@ alembic upgrade head
 
 Model was trained before schema learner had stable data, or not trained at all.
 
+**Fix — run these in order:**
+1. `python seed.py`
+2. `POST http://localhost:8000/api/rules/reload`
+3. `POST http://localhost:8000/api/anomaly/analyze-all`
+
+### Dashboard shows `⚠ Could not reach backend`
+
+uvicorn is not running or crashed.
+
 **Fix:**
-1. Run `python seed.py` to populate data
-2. Call `POST /api/rules/reload` to seed schemas + retrain
-3. Call `POST /api/anomaly/analyze-all` to re-score existing logs
+```bash
+cd backend
+.venv\Scripts\activate
+uvicorn main:app --reload --port 8000
+```
+
+### Frontend won't start — `npm run dev` fails
+
+Node modules not installed.
+
+**Fix:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
 ## Contributing
 
 1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make changes
+2. Make changes to backend or frontend
 3. Test all affected endpoints in Postman
-4. If you add new endpoints — add them to `docs/api_rules.yaml`
-5. Run `POST /api/rules/reload` after editing the rules file
+4. If you add new API endpoints — add them to `docs/api_rules.yaml`
+5. Run `POST http://localhost:8000/api/rules/reload` after editing the rules file
 6. Commit: `git commit -m "feat: describe your change"`
+7. Push and open a pull request
 
 ---
 
-*README last updated: Phase 1 complete. React dashboard in progress.*
+*README last updated: Phase 1 complete including React dashboard. Phase 2 active testing engine in planning.*

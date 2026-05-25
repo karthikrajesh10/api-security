@@ -106,3 +106,21 @@ endpoints:
     normal_latency_ms: 200
     request_fields: []
     risk_notes: "Destructive admin action — require confirmation token"
+
+  - path: /rest/V1/stores-list/top-level
+    method: GET
+    auth_required: false
+    admin_only: false
+    expected_status: [200]
+    normal_latency_ms: 400
+    request_fields: []
+    risk_notes: "Public endpoint — exposes language, country, customer group, vehicle type data. Monitor for excessive scraping."
+
+  - path: /rest/V1/admin/users
+    method: GET
+    auth_required: true
+    admin_only: true
+    expected_status: [200, 401, 403]
+    normal_latency_ms: 300
+    request_fields: []
+    risk_notes: "Admin endpoint — any access without auth is HIGH risk"
