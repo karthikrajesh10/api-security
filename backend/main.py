@@ -84,7 +84,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.ml.factory import model_provider
-from app.api import traffic, schema, anomaly, rules
+from app.api import traffic, schema, anomaly, rules,report
+
 
 app = FastAPI(
     title="API Security Platform",
@@ -104,6 +105,7 @@ app.include_router(traffic.router)
 app.include_router(schema.router)
 app.include_router(anomaly.router)
 app.include_router(rules.router)
+app.include_router(report.router)
 
 @app.on_event("startup")
 async def startup():

@@ -37,3 +37,9 @@ export const viewRules = () =>
 // ── Health ────────────────────────────────────────────────
 export const getHealth = () =>
   api.get('/health')
+
+
+// ── Report ───────────────────────────────────────────────
+
+export const downloadReport = () =>
+  api.get('/api/report/download', { responseType: 'blob' })

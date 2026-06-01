@@ -130,11 +130,11 @@ import {
 import {
   Shield, AlertTriangle, Activity, Database,
   RefreshCw, Cpu, ChevronRight, Circle,
-  BookOpen, Zap, Terminal
+  BookOpen, Zap, Terminal,FileDown
 } from 'lucide-react'
 import {
   getTrafficStats, getRecentTraffic, getFlaggedRequests,
-  getAllSchemas, trainModel, reloadRules, analyzeAll, analyzeLog,getHealth,
+  getAllSchemas, trainModel, reloadRules, analyzeAll, analyzeLog,getHealth,downloadReport
 } from './api/endpoints'
 
 import { formatDistanceToNow } from 'date-fns'
@@ -378,6 +378,20 @@ export default function App() {
     } catch { msg('✗ Analysis failed') }
     setLoading(false)
   }
+  const handleDownloadReport = async () => {
+    setLoading(true)
+    try {
+      const r = await downloadReport()
+      const url = window.URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `APISec_Report_${new Date().toISOString().slice(0,10)}.pdf`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      msg('✓ Report downloaded')
+    } catch { msg('✗ Report generation failed') }
+    setLoading(false)
+  }
 
   // ── Chart data ───────────────────────────────────────────────────────────
 
@@ -445,6 +459,7 @@ export default function App() {
           <ActionBtn onClick={handleTrain}      loading={loading} icon={Cpu}        label="Train Model"    variant="success" />
           <ActionBtn onClick={handleAnalyzeAll} loading={loading} icon={Zap}        label="Score All Logs" variant="default" />
           <ActionBtn onClick={fetchAll}         loading={loading} icon={RefreshCw}  label="Refresh Data"   variant="default" />
+          <ActionBtn onClick={handleDownloadReport} loading={loading} icon={FileDown}   label="Download Report" variant="default" />
         </div>
 
         <div className="sidebar-footer">
